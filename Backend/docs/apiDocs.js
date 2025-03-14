@@ -15,7 +15,7 @@ const swaggerOptions = {
         },
         servers: [{ url: "http://localhost:5000" }],
     },
-    apis: [path.join(__dirname, "./apiDocs.js")], // ✅ 현재 문서를 API 문서화 대상으로 지정
+    apis: [path.join(__dirname, "./apiDocs.js")], // ✅ API 문서화 대상 파일 지정
 };
 
 // ✅ Swagger 문서 생성
@@ -23,28 +23,14 @@ const swaggerDocs = swaggerJsdoc(swaggerOptions);
 router.use('/', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
 module.exports = router;
-
 /**
- * @swagger
- * tags:
- *   - name: Auth
- *     description: 로그인 관련 API
- *   - name: User Settings
- *     description: 유저 설정 API
- *   - name: Client
- *     description: 클라이언트 페이지 API
- *   - name: Dashboard
- *     description: 대시보드 API
- */
-
-// ======================= 로그인 시도 제한 (Brute Force 방어) =======================
-/**
- * @swagger
- * /api/auth/login:
+ * @openapi
+ * /auth/kakao:
  *   post:
- *     summary: ✅ 로그인 API (Brute Force 방어 포함)
- *     tags: [Auth]
- *     description: "JWT를 사용하여 사용자 로그인. 로그인 시도 제한 포함."
+ *     summary: 카카오 인가코드로 로그인하고 JWT 토큰 발급
+ *     description: 프론트엔드에서 전달한 카카오 인가코드(code)를 사용하여 카카오 서버에서 액세스 토큰을 요청하고, 사용자 정보를 받아 JWT 토큰을 발급합니다. 신규 유저인 경우 프론트엔드에서 회원가입 절차를 진행할 수 있도록 isNewUser 값을 반환합니다.
+ *     tags:
+ *       - 로그인 / 인증
  *     requestBody:
  *       required: true
  *       content:
@@ -52,387 +38,86 @@ module.exports = router;
  *           schema:
  *             type: object
  *             properties:
- *               studentId:
+ *               code:
  *                 type: string
- *                 description: "학생 ID"
- *               password:
- *                 type: string
- *                 description: "비밀번호"
+ *                 description: 카카오에서 발급받은 인가 코드
+ *                 example: QWERTYUIOP1234567890
  *     responses:
  *       200:
- *         description: "로그인 성공"
- *       403:
- *         description: "로그인 시도 제한 초과"
- *       401:
- *         description: "잘못된 인증 정보"
- */
-
-// ======================= 카카오 OAuth 로그인 =======================
-/**
- * @swagger
- * /api/auth/kakao:
- *   post:
- *     summary: ✅ 카카오 로그인 처리
- *     tags: [Auth]
- *     description: "카카오 로그인 인증 후 JWT 토큰을 발급합니다."
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               accessToken:
- *                 type: string
- *                 description: "카카오 인증을 위한 액세스 토큰"
- *     responses:
- *       200:
- *         description: "로그인 성공, JWT 토큰 반환"
- *       400:
- *         description: "잘못된 요청, 카카오 토큰 유효하지 않음"
- *       500:
- *         description: "서버 오류"
- */
-
-
-// ======================= 로그인 페이지 =======================
-/**
- * @swagger
- * /api/auth/kakao:
- *   post:
- *     summary: ✅ 카카오 로그인 처리
- *     tags: [Auth]
- *     description: "카카오 로그인 인증 후 JWT 토큰을 발급합니다."
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               accessToken:
- *                 type: string
- *                 description: "카카오 인증을 위한 액세스 토큰"
- *     responses:
- *       200:
- *         description: "로그인 성공, JWT 토큰 반환"
+ *         description: JWT 발급 및 로그인 성공
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
- *                 message:
+ *                 jwt:
  *                   type: string
- *                   description: "로그인 성공 메시지"
- *                 token:
- *                   type: string
- *                   description: "JWT 토큰"
+ *                   description: 로그인 후 발급된 JWT 토큰
+ *                   example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+ *                 isNewUser:
+ *                   type: boolean
+ *                   description: 신규 유저 여부 (회원가입 추가 정보 필요 여부)
+ *                   example: true
+ *                 user:
+ *                   type: object
+ *                   properties:
+ *                     userId:
+ *                       type: integer
+ *                       description: 사용자 시스템 고유 ID
+ *                       example: 123
+ *                     role:
+ *                       type: string
+ *                       description: 사용자 역할
+ *                       example: student
  *       400:
- *         description: "잘못된 요청, 카카오 토큰 유효하지 않음"
+ *         description: 잘못된 요청(인가 코드 오류 또는 카카오 서버 응답 실패)
  *       500:
- *         description: "서버 오류"
+ *         description: 서버 내부 오류
  */
-router.post('/api/auth/kakao', async (req, res) => {
-    const { accessToken } = req.body;
-    try {
-        const response = await axios.get('https://kapi.kakao.com/v2/user/me', {
-            headers: { Authorization: `Bearer ${accessToken}` }
-        });
-        const { id, kakao_account } = response.data;
-        
-        const sql = `INSERT INTO users (login_Id, role, identifier, name, email) 
-                     VALUES (?, 'student', ?, ?, ?) 
-                     ON DUPLICATE KEY UPDATE name=?, email=?`;
-        
-        db.query(sql, [id, id, kakao_account.profile.nickname, kakao_account.email,
-                        kakao_account.profile.nickname, kakao_account.email], (err, result) => {
-            if (err) return res.status(500).json({ error: 'Database error' });
-            
-            const token = jwt.sign({ userId: id }, 'secretKey', { expiresIn: '1h' });
-            res.json({ message: 'Login successful', token });
-        });
-    } catch (error) {
-        res.status(400).json({ error: 'Invalid Kakao token' });
-    }
-});
-
-// ======================= 유저 설정 세팅 페이지 =======================
 /**
- * @swagger
- * /api/universities:
+ * @openapi
+ * /users/me:
  *   get:
- *     summary: ✅ 대학교 목록 조회
- *     tags: [User Settings]
- *     description: "모든 대학교 목록을 조회합니다."
+ *     summary: 로그인한 사용자 정보 및 역할 반환
+ *     description: JWT 토큰을 검증하여 로그인한 사용자의 정보를 반환합니다.
+ *     tags:
+ *       - 로그인 / 인증
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: "대학교 목록"
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 type: object
- *                 properties:
- *                   university_id:
- *                     type: integer
- *                   name:
- *                     type: string
- *                   location:
- *                     type: string
- */
-router.get('/api/universities', (req, res) => {
-    const sql = 'SELECT * FROM universities';
-    db.query(sql, (err, results) => {
-        if (err) return res.status(500).json({ error: 'Database error' });
-        res.json(results);
-    });
-});
-
-/**
- * @swagger
- * /api/professors:
- *   get:
- *     summary: ✅ 학생이 선택할 수 있는 저장된 지도 교수 목록 조회
- *     tags: [User Settings]
- *     description: "학생의 학과에 맞는 교수 목록을 조회합니다."
- *     parameters:
- *       - in: query
- *         name: department
- *         description: "학생의 학과"
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: "교수 목록"
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 type: object
- *                 properties:
- *                   professor_id:
- *                     type: integer
- *                   name:
- *                     type: string
- */
-router.get('/api/professors', (req, res) => {
-    const { department } = req.query;
-    const sql = 'SELECT * FROM professor WHERE department = ?';
-    db.query(sql, [department], (err, results) => {
-        if (err) return res.status(500).json({ error: 'Database error' });
-        res.json(results);
-    });
-});
-
-// ======================= 클라이언트 페이지 =======================
-/**
- * @swagger
- * /api/students/{id}:
- *   get:
- *     summary: ✅ 학생 기본 정보 조회
- *     tags: [Client]
- *     description: "학생의 기본 정보를 조회합니다."
- *     parameters:
- *       - in: path
- *         name: id
- *         description: "학생 ID"
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: "학생 정보"
+ *         description: 사용자 정보 반환 성공
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
- *                 student_id:
+ *                 userId:
  *                   type: integer
+ *                   description: 사용자 시스템 고유 ID
+ *                   example: 123
  *                 name:
  *                   type: string
- *                 department:
+ *                   description: 사용자 이름
+ *                   example: 황태훈
+ *                 role:
  *                   type: string
- */
-router.get('/api/students/:id', (req, res) => {
-    const sql = 'SELECT * FROM student WHERE student_id = ?';
-    db.query(sql, [req.params.id], (err, results) => {
-        if (err) return res.status(500).json({ error: 'Database error' });
-        if (results.length === 0) return res.status(404).json({ error: 'Student not found' });
-        res.json(results[0]);
-    });
-});
-
-/**
- * @swagger
- * /api/grades/{id}:
- *   put:
- *     summary: ✅ 학점 수정
- *     tags: [Client]
- *     description: "학생의 학점을 수정합니다."
- *     parameters:
- *       - in: path
- *         name: id
- *         description: "학생 ID"
- *         required: true
- *         schema:
- *           type: string
- *       - in: body
- *         name: grade
- *         description: "수정할 학점 정보"
- *         required: true
- *         schema:
- *           type: object
- *           properties:
- *             course_code:
- *               type: string
- *             grade:
- *               type: string
- *     responses:
- *       200:
- *         description: "학점 수정 성공"
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *       400:
- *         description: "잘못된 요청"
- *       404:
- *         description: "학생 또는 수업을 찾을 수 없음"
- */
-router.put('/api/grades/:id', (req, res) => {
-    const { course_code, grade } = req.body;
-    const sql = 'UPDATE grade SET grade=? WHERE student_id=? AND course_code=?';
-    db.query(sql, [grade, req.params.id, course_code], (err, result) => {
-        if (err) return res.status(500).json({ error: 'Database error' });
-        res.json({ message: 'Grade updated successfully' });
-    });
-});
-
-/**
- * @swagger
- * /api/appointments:
- *   post:
- *     summary: ✅ 상담 예약
- *     tags: [Client]
- *     description: "학생이 교수와 상담을 예약합니다."
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               studentId:
- *                 type: string
- *               professorId:
- *                 type: string
- *               date:
- *                 type: string
- *                 format: date-time
- *               reason:
- *                 type: string
- *     responses:
- *       201:
- *         description: "상담 예약 성공"
- *       500:
- *         description: "데이터베이스 오류"
+ *                   description: 사용자 역할 (student / professor)
+ *                   example: student
+ *       401:
+ *         description: 인증 실패 또는 토큰 만료
  */
 
-router.post('/api/appointments', (req, res) => {
-    const { studentId, professorId, date, reason } = req.body;
-    const sql = 'INSERT INTO appointments (studentId, professorId, date, reason) VALUES (?, ?, ?, ?)';
-    db.query(sql, [studentId, professorId, date, reason], (err, result) => {
-        if (err) return res.status(500).json({ error: 'Database error' });
-        res.status(201).json({ message: 'Counseling session booked successfully' });
-    });
-});
-
 /**
- * @swagger
- * /api/professors/{id}/appointments:
+ * @openapi
+ * /universities:
  *   get:
- *     summary: ✅ 교수 상담 일정 조회
- *     tags: [Client]
- *     description: "특정 교수의 상담 일정을 조회합니다."
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         description: "교수 ID"
- *         schema:
- *           type: string
+ *     summary: 대학 목록 조회
+ *     tags:
+ *       - User Settings
  *     responses:
  *       200:
- *         description: "상담 일정 반환"
- *       500:
- *         description: "데이터베이스 오류"
- */
-
-router.get('/api/professors/:id/appointments', (req, res) => {
-    const sql = 'SELECT * FROM appointments WHERE professorId = ?';
-    db.query(sql, [req.params.id], (err, results) => {
-        if (err) return res.status(500).json({ error: 'Database error' });
-        res.json(results);
-    });
-});
-
-
-/**
- * @swagger
- * /api/appointments/{id}:
- *   delete:
- *     summary: ✅ 상담 삭제
- *     tags: [Client]
- *     description: "예약된 상담을 삭제합니다."
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         description: "상담 ID"
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: "상담 삭제 성공"
- *       404:
- *         description: "해당 상담을 찾을 수 없음"
- *       500:
- *         description: "데이터베이스 오류"
- */
-
-router.delete('/api/appointments/:id', (req, res) => {
-    const sql = 'DELETE FROM appointments WHERE id = ?';
-    db.query(sql, [req.params.id], (err, result) => {
-        if (err) return res.status(500).json({ error: 'Database error' });
-        res.json({ message: 'Appointment deleted successfully' });
-    });
-});
-
-// ======================= 대시보드 페이지 =======================
-/**
- * @swagger
- * /api/professors/{id}/students:
- *   get:
- *     summary: ✅ 지도학생 목록 조회
- *     tags: [Dashboard]
- *     description: "지도 교수의 학생 목록을 조회합니다."
- *     parameters:
- *       - in: path
- *         name: id
- *         description: "교수 ID"
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: "지도학생 목록"
+ *         description: 성공적으로 대학 목록을 반환합니다.
  *         content:
  *           application/json:
  *             schema:
@@ -440,145 +125,923 @@ router.delete('/api/appointments/:id', (req, res) => {
  *               items:
  *                 type: object
  *                 properties:
- *                   student_id:
+ *                   id:
  *                     type: integer
+ *                     example: 1
  *                   name:
  *                     type: string
+ *                     example: 서울대학교
  */
-router.get('/api/professors/:id/students', (req, res) => {
-    const sql = 'SELECT * FROM advising_student WHERE professor_id = ?';
-    db.query(sql, [req.params.id], (err, results) => {
-        if (err) return res.status(500).json({ error: 'Database error' });
-        res.json(results);
-    });
-});
 
 /**
- * @swagger
- * /api/career/{id}:
+ * @openapi
+ * /universities/{id}/professors:
  *   get:
- *     summary: ✅ 진로 정보 조회
- *     tags: [Dashboard]
- *     description: "학생의 진로 정보를 조회합니다."
+ *     summary: 선택한 대학의 교수 목록 조회
+ *     tags:
+ *       - User Settings
  *     parameters:
  *       - in: path
  *         name: id
- *         description: "학생 ID"
  *         required: true
+ *         description: 대학의 고유 ID
  *         schema:
- *           type: string
+ *           type: integer
+ *           example: 1
  *     responses:
  *       200:
- *         description: "진로 정보"
+ *         description: 성공적으로 교수 목록을 반환합니다.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: string
+ *                     example: P-0001
+ *                   name:
+ *                     type: string
+ *                     example: 김교수
+ *                   position:
+ *                     type: string
+ *                     example: 조교수
+ */
+
+/**
+ * @openapi
+ * /users/settings:
+ *   put:
+ *     summary: 유저 추가 정보 저장 및 수정 (역할 기반 폼)
+ *     tags:
+ *       - User Settings
+ *     description: 사용자 역할에 따라 폼이 달라지며, 저장 및 수정 시 역할에 맞는 정보를 전송합니다.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             oneOf:
+ *               - $ref: '#/components/schemas/ProfessorSettings'
+ *               - $ref: '#/components/schemas/StudentSettings'
+ *     responses:
+ *       200:
+ *         description: 사용자 세팅이 성공적으로 저장되었습니다.
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
- *                 career_goals:
+ *                 message:
  *                   type: string
+ *                   example: User settings updated successfully
+ *       400:
+ *         description: 잘못된 요청입니다.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Validation failed
+ *                 details:
+ *                   type: object
+ *                   example:
+ *                     studentId: 학번은 필수입니다.
  */
 
-router.get('/api/career/:id', (req, res) => {
-    const sql = 'SELECT * FROM career WHERE student_id = ?';
-    db.query(sql, [req.params.id], (err, results) => {
-        if (err) return res.status(500).json({ error: 'Database error' });
-        if (results.length === 0) return res.status(404).json({ error: 'Career information not found' });
-        res.json(results[0]);
-    });
-});
-
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     ProfessorSettings:
+ *       type: object
+ *       required:
+ *         - role
+ *         - universityId
+ *         - name
+ *         - professorId
+ *         - position
+ *       properties:
+ *         role:
+ *           type: string
+ *           enum: [professor]
+ *           example: professor
+ *         universityId:
+ *           type: integer
+ *           description: 소속 대학의 ID
+ *           example: 1
+ *         name:
+ *           type: string
+ *           description: 교수 이름
+ *           example: 홍길동
+ *         professorId:
+ *           type: string
+ *           description: 교수 번호
+ *           example: P-0001
+ *         position:
+ *           type: string
+ *           description: 교수 직급
+ *           example: 조교수
+ *         
+ *     StudentSettings:
+ *       type: object
+ *       required:
+ *         - role
+ *         - universityId
+ *         - name
+ *         - advisorProfessorId
+ *         - studentId
+ *       properties:
+ *         role:
+ *           type: string
+ *           enum: [student]
+ *           example: student
+ *         universityId:
+ *           type: integer
+ *           description: 소속 대학의 ID
+ *           example: 1
+ *         name:
+ *           type: string
+ *           description: 학생 이름
+ *           example: 김학생
+ *         advisorProfessorId:
+ *           type: string
+ *           description: 지도 교수 ID
+ *           example: P-0001
+ *         studentId:
+ *           type: string
+ *           description: 학번
+ *           example: 20230001
+ */
+/**
+ * @openapi
+ * /client-data/basic:
+ *   get:
+ *     summary: 기본 정보 조회
+ *     tags:
+ *       - Client Page
+ *     responses:
+ *       200:
+ *         description: 기본 정보를 반환합니다.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 grade:
+ *                   type: string
+ *                   example: 3학년
+ *                 major:
+ *                   type: string
+ *                   example: 컴퓨터공학과
+ *                 phoneNumber:
+ *                   type: string
+ *                   example: 010-1234-5678
+ */
 
 /**
- * @swagger
- * /api/students/{id}:
+ * @openapi
+ * /client-data/basic:
+ *   put:
+ *     summary: 기본 정보 수정
+ *     tags:
+ *       - Client Page
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               grade:
+ *                 type: string
+ *                 example: 3학년
+ *               major:
+ *                 type: string
+ *                 example: 컴퓨터공학과
+ *               phoneNumber:
+ *                 type: string
+ *                 example: 010-1234-5678
+ *     responses:
+ *       200:
+ *         description: 기본 정보가 성공적으로 수정되었습니다.
+ */
+
+/**
+ * @openapi
+ * /client-data/grades:
  *   get:
- *     summary: ✅ 학생 정보 조회
- *     tags: [Dashboard]
- *     description: "학생의 기본 정보를 조회합니다."
+ *     summary: 특정 학기의 과목별 성적 조회
+ *     tags:
+ *       - Client Page
+ *     parameters:
+ *       - in: query
+ *         name: semester
+ *         required: true
+ *         description: "조회할 학기명 (예: 1학년 1학기)"
+ *         schema:
+ *           type: string
+ *         example: 1학년 1학기
+ *     responses:
+ *       200:
+ *         description: 특정 학기의 성적 데이터를 반환합니다.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   area:
+ *                     type: string
+ *                     example: 전공필수
+ *                   subjectName:
+ *                     type: string
+ *                     example: 자료구조
+ *                   grade:
+ *                     type: string
+ *                     example: A+
+ */
+
+/**
+ * @openapi
+ * /client-data/grades:
+ *   put:
+ *     summary: 특정 학기의 과목별 성적 수정
+ *     tags:
+ *       - Client Page
+ *     parameters:
+ *       - in: query
+ *         name: semester
+ *         required: true
+ *         description: "수정할 학기명 (예: 1학년 1학기)"
+ *         schema:
+ *           type: string
+ *         example: 1학년 1학기
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: array
+ *             items:
+ *               type: object
+ *               properties:
+ *                 area:
+ *                   type: string
+ *                   example: 전공필수
+ *                 subjectName:
+ *                   type: string
+ *                   example: 자료구조
+ *                 grade:
+ *                   type: string
+ *                   example: A+
+ *     responses:
+ *       200:
+ *         description: 성적이 성공적으로 수정되었습니다.
+ */
+
+/**
+ * @openapi
+ * /client-data/career:
+ *   get:
+ *     summary: 진로 정보 조회
+ *     tags:
+ *       - Client Page
+ *     responses:
+ *       200:
+ *         description: 진로 정보를 반환합니다.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 desiredJob:
+ *                   type: string
+ *                   example: 백엔드 개발자
+ *                 certifications:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                   example: ["정보처리기사", "AWS Certified Solutions Architect"]
+ *                 internships:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                   example: ["네이버 인턴십", "카카오 인턴십"]
+ *                 projects:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                   example: ["캡스톤 디자인 프로젝트", "AI 챗봇 개발"]
+ */
+
+/**
+ * @openapi
+ * /client-data/career:
+ *   put:
+ *     summary: 진로 정보 수정
+ *     tags:
+ *       - Client Page
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               desiredJob:
+ *                 type: string
+ *                 example: 백엔드 개발자
+ *               certifications:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 example: ["정보처리기사"]
+ *               internships:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 example: ["카카오 인턴십"]
+ *               projects:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 example: ["AI 챗봇 개발"]
+ *     responses:
+ *       200:
+ *         description: 진로 정보가 성공적으로 수정되었습니다.
+ */
+
+/**
+ * @openapi
+ * /client-data/counseling:
+ *   get:
+ *     summary: 교수 상담 기록 조회
+ *     tags:
+ *       - Client Page
+ *     responses:
+ *       200:
+ *         description: 상담 기록 데이터를 반환합니다.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   date:
+ *                     type: string
+ *                     format: date
+ *                     example: 2024-03-01
+ *                   title:
+ *                     type: string
+ *                     example: 학업 상담
+ *                   memo:
+ *                     type: string
+ *                     example: 전공 수업 수강 계획 상담 진행
+ */
+
+/**
+ * @openapi
+ * /counseling-request:
+ *   post:
+ *     summary: 상담 요청 등록
+ *     tags:
+ *       - Client Page
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *                 example: 졸업 요건 상담 요청
+ *               memo:
+ *                 type: string
+ *                 example: 졸업 논문에 대해 상담하고 싶습니다.
+ *     responses:
+ *       200:
+ *         description: 상담 요청이 성공적으로 등록되었습니다.
+ */
+/**
+ * @openapi
+ * components:
+ *   securitySchemes:
+ *     bearerAuth:
+ *       type: http
+ *       scheme: bearer
+ *       bearerFormat: JWT
+ */
+
+/**
+ * @openapi
+ * /dashboard/widgets-config:
+ *   get:
+ *     summary: 교수 대시보드 위젯 배치 조회
+ *     description: 교수별 저장된 위젯 배치 정보를 조회합니다. 크기는 클라이언트에서 고정 처리합니다.
+ *     tags:
+ *       - Dashboard (Professor)
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: 위젯 배치 정보 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 widgets:
+ *                   type: array
+ *                   description: 교수별 위젯 배치 정보 목록입니다.
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       widgetId:
+ *                         type: string
+ *                         example: profileCard
+ *                       position:
+ *                         type: object
+ *                         description: 위젯의 배치 좌표입니다.
+ *                         properties:
+ *                           x:
+ *                             type: number
+ *                             example: 0
+ *                           y:
+ *                             type: number
+ *                             example: 0
+ *                       order:
+ *                         type: integer
+ *                         description: 위젯의 렌더링 순서입니다.
+ *                         example: 1
+ */
+/**
+ * @openapi
+ * /dashboard/widgets-config:
+ *   put:
+ *     summary: 교수 대시보드 위젯 배치 저장
+ *     description: 교수별 위젯의 위치와 순서를 저장합니다. 위젯 크기는 클라이언트에서 고정 처리합니다.
+ *     tags:
+ *       - Dashboard (Professor)
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               widgets:
+ *                 type: array
+ *                 description: 저장할 위젯 리스트입니다.
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     widgetId:
+ *                       type: string
+ *                       example: profileCard
+ *                     position:
+ *                       type: object
+ *                       description: 위젯의 배치 좌표입니다.
+ *                       properties:
+ *                         x:
+ *                           type: number
+ *                           example: 0
+ *                         y:
+ *                           type: number
+ *                           example: 0
+ *                     order:
+ *                       type: integer
+ *                       description: 위젯 렌더링 순서입니다.
+ *                       example: 1
+ *     responses:
+ *       200:
+ *         description: 위젯 배치 저장 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: 위젯 배치가 성공적으로 저장되었습니다.
+ */
+
+/**
+ * @openapi
+ * /dashboard/widgets-data:
+ *   get:
+ *     summary: 현재 학생의 전체 위젯 데이터 조회
+ *     description: 현재 교수의 관리 학생 중 한 명의 정보를 바탕으로 전체 위젯 데이터를 반환합니다.
+ *     tags:
+ *       - Dashboard (Professor)
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: 학생 기반 전체 위젯 데이터 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 studentInfo:
+ *                   type: object
+ *                   properties:
+ *                     studentId:
+ *                       type: string
+ *                       example: 2021145086
+ *                     name:
+ *                       type: string
+ *                       example: 황태훈
+ *                     grade:
+ *                       type: string
+ *                       example: 3학년
+ *                     studentNumber:
+ *                       type: string
+ *                       example: 2021145086
+ *                     major:
+ *                       type: string
+ *                       example: 컴퓨터공학과
+ *                 projects:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       projectName:
+ *                         type: string
+ *                         example: React 기반 웹 프론트엔드 개발
+ *                       description:
+ *                         type: string
+ *                         example: 웹 플랫폼 프론트엔드 개발
+ *                       techStack:
+ *                         type: array
+ *                         items:
+ *                           type: string
+ *                         example: [React, TypeScript]
+ *                       duration:
+ *                         type: string
+ *                         example: 2023-01 ~ 2023-06
+ *                 desiredJobs:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       jobTitle:
+ *                         type: string
+ *                         example: 백엔드 개발자
+ *                       stackPreference:
+ *                         type: array
+ *                         items:
+ *                           type: string
+ *                         example: [Node.js, Spring]
+ *                 gradesTrend:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       semesterName:
+ *                         type: string
+ *                         example: 1학년 1학기
+ *                       gpa:
+ *                         type: number
+ *                         example: 4.0
+ *                       changeRate:
+ *                         type: string
+ *                         example: +0.2
+ *                 semesterGrades:
+ *                   type: object
+ *                   properties:
+ *                     semester:
+ *                       type: string
+ *                       example: 3학년 1학기
+ *                     subjects:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           subjectName:
+ *                             type: string
+ *                             example: 자료구조
+ *                           grade:
+ *                             type: string
+ *                             example: A
+ *                           score:
+ *                             type: number
+ *                             example: 4.0
+ *                 graduationStatus:
+ *                   type: object
+ *                   properties:
+ *                     totalCompletionRate:
+ *                       type: integer
+ *                       example: 100
+ *                     requirements:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           category:
+ *                             type: string
+ *                             example: 전공필수
+ *                           completionRate:
+ *                             type: integer
+ *                             example: 50
+ *                           earnedCredits:
+ *                             type: integer
+ *                             example: 30
+ *                           requiredCredits:
+ *                             type: integer
+ *                             example: 60
+ */
+/**
+ * @openapi
+ * /students/managed:
+ *   get:
+ *     summary: 교수 지도학생 리스트 조회
+ *     description: 현재 교수 계정이 관리 중인 전체 지도학생 목록을 반환합니다.  
+ *                  학생 이름 검색과 페이지네이션을 지원합니다.
+ *     tags:
+ *       - 지도학생 관리 (Professor)
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *         required: false
+ *         description: "조회할 페이지 번호 (기본값: 1)"
+ *         example: 1
+ *       - in: query
+ *         name: size
+ *         schema:
+ *           type: integer
+ *         required: false
+ *         description: "페이지당 항목 수 (기본값: 20)"
+ *         example: 20
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         required: false
+ *         description: "학생 이름 검색어 (학생명 기준)"
+ *         example: 황태훈
+ *     responses:
+ *       200:
+ *         description: 교수의 지도학생 리스트 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 totalCount:
+ *                   type: integer
+ *                   example: 50
+ *                 currentPage:
+ *                   type: integer
+ *                   example: 1
+ *                 totalPages:
+ *                   type: integer
+ *                   example: 3
+ *                 students:
+ *                   type: array
+ *                   description: 학생 리스트 데이터
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       studentId:
+ *                         type: string
+ *                         example: 2021145086
+ *                       name:
+ *                         type: string
+ *                         example: 황태훈
+ *                       riskLevel:
+ *                         type: string
+ *                         enum: [안전, 위험]
+ *                         example: 안전
+ *                       age:
+ *                         type: integer
+ *                         example: 24
+ *                       grade:
+ *                         type: integer
+ *                         example: 3
+ *                       gpa:
+ *                         type: number
+ *                         format: float
+ *                         example: 3.8
+ */
+/**
+ * @openapi
+ * /students/{id}/profile:
+ *   get:
+ *     summary: 지도학생 기본 프로필 조회
+ *     description: 교수 전용, 특정 지도학생의 기본 정보를 조회합니다.
+ *     tags:
+ *       - 지도학생 상세 (Professor)
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
- *         description: "학생 ID"
+ *         description: 학생 고유 ID
  *         schema:
  *           type: string
+ *         example: 2021145086
  *     responses:
  *       200:
- *         description: "학생 정보 반환"
- *       404:
- *         description: "해당 학생을 찾을 수 없음"
+ *         description: 학생 기본 프로필 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 grade:
+ *                   type: string
+ *                   example: 3학년
+ *                 major:
+ *                   type: string
+ *                   example: 컴퓨터공학과
+ *                 phoneNumber:
+ *                   type: string
+ *                   example: 010-1234-5678
  */
-
-router.get('/api/students/:id', (req, res) => {
-    const sql = 'SELECT * FROM students WHERE student_id = ?';
-    db.query(sql, [req.params.id], (err, results) => {
-        if (err) return res.status(500).json({ error: 'Database error' });
-        if (results.length === 0) return res.status(404).json({ error: 'Student not found' });
-        res.json(results[0]);
-    });
-});
-
 /**
- * @swagger
- * /api/grades/{student_number}:
+ * @openapi
+ * /students/{id}/grades/details:
  *   get:
- *     summary: ✅ 학점 조회
- *     tags: [Dashboard]
- *     description: "특정 학생의 학점 정보를 조회합니다."
+ *     summary: 지도학생 특정 학기 성적 상세 조회
+ *     description: 선택한 학기의 과목별 성적 정보를 조회합니다.
+ *     tags:
+ *       - 지도학생 상세 (Professor)
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: student_number
+ *         name: id
  *         required: true
- *         description: "학생의 학번"
+ *         description: 학생 고유 ID
  *         schema:
  *           type: string
+ *         example: 2021145086
+ *       - in: query
+ *         name: semester
+ *         required: true
+ *         description: 조회할 학기명
+ *         schema:
+ *           type: string
+ *         example: 3학년 1학기
  *     responses:
  *       200:
- *         description: "학점 조회 성공"
- *       404:
- *         description: "해당 학생의 학점 정보 없음"
+ *         description: 특정 학기 과목별 성적 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   area:
+ *                     type: string
+ *                     example: 전공필수
+ *                   subjectName:
+ *                     type: string
+ *                     example: 자료구조
+ *                   grade:
+ *                     type: string
+ *                     example: A+
  */
-
-router.get('/api/completed_credits/:id', (req, res) => {
-    const sql = 'SELECT * FROM completed_credits WHERE student_id = ?';
-    db.query(sql, [req.params.id], (err, results) => {
-        if (err) return res.status(500).json({ error: 'Database error' });
-        if (results.length === 0) return res.status(404).json({ error: 'Completed credits not found' });
-        res.json(results[0]);
-    });
-});
-
-
 /**
- * @swagger
- * /api/completed_credits/{student_number}:
+ * @openapi
+ * /students/{id}/career/details:
  *   get:
- *     summary: ✅ 이수 학점 조회
- *     tags: [Dashboard]
- *     description: "특정 학생의 이수 학점 정보를 조회합니다."
+ *     summary: 지도학생 진로 및 경력 상세 조회
+ *     description: 희망 직무, 자격증, 인턴십, 프로젝트 경험 정보를 조회합니다.
+ *     tags:
+ *       - 지도학생 상세 (Professor)
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: student_number
+ *         name: id
  *         required: true
- *         description: "학생의 학번"
+ *         description: 학생 고유 ID
  *         schema:
  *           type: string
+ *         example: 2021145086
  *     responses:
  *       200:
- *         description: "이수 학점 조회 성공"
- *       404:
- *         description: "해당 학생의 이수 학점 정보 없음"
+ *         description: 학생 진로 및 경력 정보 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 desiredJob:
+ *                   type: string
+ *                   example: 백엔드 개발자
+ *                 certifications:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                   example: [ "정보처리기사", "AWS Certified Solutions Architect" ]
+ *                 internships:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                   example: [ "네이버 인턴십", "카카오 인턴십" ]
+ *                 projects:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                   example: [ "캡스톤 디자인 프로젝트", "AI 챗봇 개발" ]
  */
-
-router.get('/api/completed_credits/:id', (req, res) => {
-    const sql = 'SELECT * FROM completed_credits WHERE student_id = ?';
-    db.query(sql, [req.params.id], (err, results) => {
-        if (err) return res.status(500).json({ error: 'Database error' });
-        if (results.length === 0) return res.status(404).json({ error: 'Completed credits not found' });
-        res.json(results[0]);
-    });
-});
-
-
-module.exports = router;
+/**
+ * @openapi
+ * /students/{id}/counseling/history:
+ *   get:
+ *     summary: 지도학생 상담 기록 전체 조회
+ *     description: 해당 학생의 모든 상담 기록을 조회합니다.
+ *     tags:
+ *       - 지도학생 상세 (Professor)
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: 학생 고유 ID
+ *         schema:
+ *           type: string
+ *         example: 2021145086
+ *     responses:
+ *       200:
+ *         description: 학생 상담 기록 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   date:
+ *                     type: string
+ *                     format: date
+ *                     example: 2024-03-01
+ *                   title:
+ *                     type: string
+ *                     example: 학업 상담
+ *                   memo:
+ *                     type: string
+ *                     example: 전공 수업 수강 계획 상담 진행
+ */
+/**
+ * @openapi
+ * /students/{id}/counseling:
+ *   post:
+ *     summary: 지도학생 상담 기록 추가 등록
+ *     description: 새로운 상담 기록을 추가합니다.
+ *     tags:
+ *       - 지도학생 상세 (Professor)
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: 학생 고유 ID
+ *         schema:
+ *           type: string
+ *         example: 2021145086
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *                 example: 졸업 요건 상담 요청
+ *               memo:
+ *                 type: string
+ *                 example: 졸업 논문에 대해 상담하고 싶습니다.
+ *     responses:
+ *       200:
+ *         description: 상담 기록 추가 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: 상담 기록이 성공적으로 추가되었습니다.
+ */
