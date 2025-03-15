@@ -1,13 +1,17 @@
-import axios from 'axios';
+import http from './http';
+import { LoginResponse, UserInfo } from './types/auth';
 
-const API_BASE_URL = 'http://localhost:5000/auth'; // 백엔드 주소
-
-export const googleLogin = async (code: string) => {
-  const response = await axios.post(`${API_BASE_URL}/google`, { code });
-  return response.data;
+export const kakaoLogin = async (code: string): Promise<LoginResponse> => {
+  const res = await http.post<LoginResponse>('/auth/kakao', { code });
+  return res.data;
 };
 
-export const kakaoLogin = async (code: string) => {
-  const response = await axios.post(`${API_BASE_URL}/kakao`, { code });
-  return response.data;
+export const getUserInfo = async (): Promise<UserInfo> => {
+  const res = await http.get<UserInfo>('/users/me');
+  return res.data;
+};
+
+export const googleLogin = async (code: string): Promise<LoginResponse> => {
+  const res = await http.post<LoginResponse>('/auth/google', { code });
+  return res.data;
 };
