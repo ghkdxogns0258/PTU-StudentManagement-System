@@ -1,65 +1,51 @@
-// /pages/Dashboard.tsx
-
 import React from 'react';
 import CssBaseline from '@mui/material/CssBaseline';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Button from '@mui/material/Button';
-
 import AppNavbar from '../components/layout/AppNavbar';
 import Header from '../components/layout/Header';
 import SideMenu from '../components/navigation/SideMenu';
 import AppTheme from '../theme/AppTheme';
-
-import { getWidgetsConfig, saveWidgetsConfig } from '../api/dashboard';
-import { WidgetConfig } from '../api/types/dashboard';
-
-// 기본 레이아웃 (없을 때 fallback)
-import { defaultWidgetConfigs } from '../constants/defaultWidgetConfigs';
-
-// Droppable/Draggable 구현된 Overview
 import { Overview } from '../components/layout/MainGrid';
+import { useDashboardWidgets } from '../hooks/useDashboardWidgets';
 
 export default function Dashboard(props: { disableCustomTheme?: boolean }) {
-  const [isEditMode, setIsEditMode] = React.useState(false);
-  const [widgets, setWidgets] = React.useState<WidgetConfig[]>([]);
+  const {
+    widgets,
+    isEditMode,
+    handleUpdateWidgets,
+    toggleEditMode,
+  } = useDashboardWidgets();
 
-  // 1) 컴포넌트 마운트 시점에 서버에서 위젯 레이아웃 불러옴
+  const [currentStudentId, setCurrentStudentId] = React.useState<string>('');
+  const [studentList, setStudentList] = React.useState<string[]>([]);
+
   React.useEffect(() => {
-    (async () => {
+    const fetchStudents = async () => {
       try {
-        const { widgets: fetched } = await getWidgetsConfig();
-        // 비어 있으면 기본 레이아웃을 사용
-        if (!fetched || fetched.length === 0) {
-          setWidgets(defaultWidgetConfigs);
-        } else {
-          setWidgets(fetched);
-        }
+        // TODO: 학생 리스트 불러오는 API로 교체
+        const dummyStudents = ['2021145086', '2021145099', '2021145077'];
+        setStudentList(dummyStudents);
+        setCurrentStudentId(dummyStudents[0]);
       } catch (err) {
-        console.error('getWidgetsConfig error:', err);
-        // 서버 에러 등으로 못 불러오면 기본 레이아웃
-        setWidgets(defaultWidgetConfigs);
+        console.error('학생 리스트 불러오기 실패:', err);
       }
-    })();
+    };
+
+    fetchStudents();
   }, []);
 
-  // 2) Overview에서 드래그&드롭 결과가 들어오면 state 업데이트
-  const handleUpdateWidgets = (newWidgets: WidgetConfig[]) => {
-    setWidgets(newWidgets);
+  const handleNextStudent = () => {
+    const currentIndex = studentList.indexOf(currentStudentId);
+    const nextIndex = (currentIndex + 1) % studentList.length;
+    setCurrentStudentId(studentList[nextIndex]);
   };
 
-  // 3) 수정 모드 토글
-  const toggleEditMode = async () => {
-    if (isEditMode) {
-      // “수정 완료” 시점에 서버 저장
-      try {
-        const res = await saveWidgetsConfig(widgets);
-        console.log('Saved:', res.message);
-      } catch (err) {
-        console.error('saveWidgetsConfig error:', err);
-      }
-    }
-    setIsEditMode(!isEditMode);
+  const handlePrevStudent = () => {
+    const currentIndex = studentList.indexOf(currentStudentId);
+    const prevIndex = (currentIndex - 1 + studentList.length) % studentList.length;
+    setCurrentStudentId(studentList[prevIndex]);
   };
 
   return (
@@ -90,6 +76,23 @@ export default function Dashboard(props: { disableCustomTheme?: boolean }) {
           >
             <Header />
 
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button
+                variant="outlined"
+                onClick={handlePrevStudent}
+                disabled={studentList.length === 0}
+              >
+                이전 학생
+              </Button>
+              <Button
+                variant="outlined"
+                onClick={handleNextStudent}
+                disabled={studentList.length === 0}
+              >
+                다음 학생
+              </Button>
+            </Box>
+
             <Button
               variant="contained"
               color={isEditMode ? 'error' : 'primary'}
@@ -102,6 +105,7 @@ export default function Dashboard(props: { disableCustomTheme?: boolean }) {
               isEditMode={isEditMode}
               widgets={widgets}
               onUpdateWidgets={handleUpdateWidgets}
+              studentId={currentStudentId}
             />
           </Stack>
         </Box>

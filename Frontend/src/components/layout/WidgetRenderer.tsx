@@ -1,12 +1,10 @@
-// /components/layout/WidgetRenderer.tsx
-
 import * as React from 'react';
 import ProfileCard from '../widget/ProfileCard';
 import GraduationRequirements from '../widget/GraduationRequirements';
 import SemesterGrade from '../widget/SemesterGrade';
 import SemesterGradeChange from '../widget/SemesterGradeChange';
 
-const widgetComponents: Record<string, React.FC> = {
+const widgetComponents: Record<string, React.FC<{ id: string }>> = {
   profileCard: ProfileCard,
   semesterGradeChange: SemesterGradeChange,
   semesterGrade: SemesterGrade,
@@ -14,20 +12,25 @@ const widgetComponents: Record<string, React.FC> = {
 };
 
 interface WidgetRendererProps {
-  sectionId: string;  // 이 값이 실은 widgetId 역할
+  sectionId: string; 
   isEditMode: boolean;
+  studentId: string;  
 }
 
-export default function WidgetRenderer({ sectionId, isEditMode }: WidgetRendererProps) {
+export default function WidgetRenderer({ sectionId, isEditMode, studentId }: WidgetRendererProps) {
   const WidgetComponent = widgetComponents[sectionId];
+
   if (!WidgetComponent) {
-    return null;
+    return (
+      <div style={{ padding: '16px', textAlign: 'center', color: '#999' }}>
+        지원하지 않는 위젯입니다.
+      </div>
+    );
   }
 
-  // props에 isEditMode를 전달할 필요가 있다면, 아래처럼 확장
   return (
     <div style={{ cursor: isEditMode ? 'grab' : 'default' }}>
-      <WidgetComponent />
+      <WidgetComponent id={studentId} />
     </div>
   );
 }
