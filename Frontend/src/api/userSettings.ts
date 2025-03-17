@@ -15,3 +15,8 @@ export const saveUserSettings = async (settings: ProfessorSettings | StudentSett
   const res = await http.put<{ message: string }>('/users/settings', settings);
   return res.data;
 };
+
+export const fetchUserSettings = async (): Promise<ProfessorSettings | StudentSettings> => {
+  const res = await http.get<ProfessorSettings | StudentSettings>('/users/settings');
+  return res.data;
+};

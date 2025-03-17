@@ -1,39 +1,43 @@
 import * as React from 'react';
-import Avatar from '@mui/material/Avatar';
-import Chip from '@mui/material/Chip';
-import { GridCellParams, GridRowsProp, GridColDef } from '@mui/x-data-grid';
+import { Chip } from '@mui/material';
+import { GridCellParams, GridColDef } from '@mui/x-data-grid';
 import { SparkLineChart } from '@mui/x-charts/SparkLineChart';
+import { ManagedStudent } from '../../api/types/students'; 
 
-type SparkLineData = number[];
+// 위험도 상태 렌더링
+function renderStatus(status: '안전' | '위험') {
+  const colors: { [key: string]: 'success' | 'error' } = {
+    안전: 'success',
+    위험: 'error',
+  };
 
-function getDaysInMonth(month: number, year: number) {
-  const date = new Date(year, month, 0);
-  const monthName = date.toLocaleDateString('en-US', {
-    month: 'short',
-  });
-  const daysInMonth = date.getDate();
-  const days = [];
-  let i = 1;
-  while (days.length < daysInMonth) {
-    days.push(`${monthName} ${i}`);
-    i += 1;
-  }
-  return days;
+  return (
+    <Chip
+      label={status || '알 수 없음'}
+      color={colors[status] || 'default'}
+      size="small"
+    />
+  );
 }
 
-function renderSparklineCell(params: GridCellParams<SparkLineData, any>) {
-  const data = getDaysInMonth(1, 2025);
-  const { value, colDef } = params;
+// 활동 데이터 스파크라인 차트 렌더링
+function renderSparklineCell(params: GridCellParams<ManagedStudent, number[]>) {
+  const dataLabels = Array.from({ length: 30 }, (_, i) => `1월 ${i + 1}`);
+  const value = params.value ?? [];
 
-  if (!value || value.length === 0) {
-    return null;
+  if (value.length === 0) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', height: '100%' }}>
+        <span style={{ color: '#aaa', fontStyle: 'italic' }}>데이터 없음</span>
+      </div>
+    );
   }
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', height: '100%' }}>
       <SparkLineChart
         data={value}
-        width={colDef.computedWidth || 100}
+        width={params.colDef?.computedWidth || 100}
         height={32}
         plotType="bar"
         showHighlight
@@ -41,51 +45,33 @@ function renderSparklineCell(params: GridCellParams<SparkLineData, any>) {
         colors={['hsl(210, 98%, 42%)']}
         xAxis={{
           scaleType: 'band',
-          data,
+          data: dataLabels,
         }}
       />
     </div>
   );
 }
 
-function renderStatus(status: '안전' | '위험') {
-  const colors: { [index: string]: 'success' | 'error' } = {
-    안전: 'success',
-    위험: 'error',
-  };
-
-  return <Chip label={status} color={colors[status]} size="small" />;
-}
-
-export function renderAvatar(
-  params: GridCellParams<{ name: string; color: string }, any, any>,
-) {
-  if (params.value == null) {
-    return '';
-  }
-
-  return (
-    <Avatar
-      sx={{
-        backgroundColor: params.value.color,
-        width: '24px',
-        height: '24px',
-        fontSize: '0.85rem',
-      }}
-    >
-      {params.value.name.toUpperCase().substring(0, 1)}
-    </Avatar>
-  );
-}
-
-export const columns: GridColDef[] = [
-  { field: 'studentName', headerName: '학생명', flex: 1.5, minWidth: 200 },
+// ✅ API 기준 컬럼 정의
+export const columns: GridColDef<ManagedStudent>[] = [
   {
-    field: 'status',
+    field: 'studentId', // ✅ 필수 (DataGrid는 id 필드가 필요함)
+    headerName: '학생 ID',
+    flex: 1,
+    minWidth: 150,
+  },
+  {
+    field: 'name',
+    headerName: '학생명',
+    flex: 1.5,
+    minWidth: 200,
+  },
+  {
+    field: 'riskLevel',
     headerName: '위험도',
     flex: 0.5,
     minWidth: 80,
-    renderCell: (params) => renderStatus(params.value as any),
+    renderCell: (params) => renderStatus(params.value as '안전' | '위험'),
   },
   {
     field: 'age',
@@ -104,59 +90,21 @@ export const columns: GridColDef[] = [
     minWidth: 100,
   },
   {
-    field: 'credit',
+    field: 'gpa',
     headerName: '학점',
     headerAlign: 'right',
     align: 'right',
     flex: 1,
     minWidth: 120,
-  },
-  {
-    field: 'averageTime',
-    headerName: '미정',
-    headerAlign: 'right',
-    align: 'right',
-    flex: 1,
-    minWidth: 100,
+    valueFormatter: (params) => params.value?.toFixed(2) ?? '-',
   },
   {
     field: 'conversions',
-    headerName: '미정',
+    headerName: '활동 데이터',
     flex: 1,
     minWidth: 150,
     renderCell: renderSparklineCell,
-  },
-];
-
-export const rows: GridRowsProp = [
-  {
-    id: 1,
-    studentName: '황태훈',
-    status: '안전',
-    age: 24,
-    grade: 3,
-    credit: 3.8,
-    averageTime: '',
-    conversions: [
-      469172, 488506, 592287, 617401, 640374, 632751, 668638, 807246, 749198, 944863,
-      911787, 844815, 992022, 1143838, 1446926, 1267886, 1362511, 1348746, 1560533,
-      1670690, 1695142, 1916613, 1823306, 1683646, 2025965, 2529989, 3263473,
-      3296541, 3041524, 2599497,
-    ],
-  },
-  {
-    id: 2,
-    studentName: '황태훈2',
-    status: '위험',
-    age: 20,
-    grade: 1,
-    credit: 2.1,
-    averageTime: '',
-    conversions: [
-      469172, 488506, 592287, 617401, 640374, 632751, 668638, 807246, 749198, 944863,
-      911787, 844815, 992022, 1143838, 1446926, 1267886, 1362511, 1348746, 1560533,
-      1670690, 1695142, 1916613, 1823306, 1683646, 2025965, 2529989, 3263473,
-      3296541, 3041524, 2599497,
-    ],
+    sortable: false,
+    filterable: false,
   },
 ];

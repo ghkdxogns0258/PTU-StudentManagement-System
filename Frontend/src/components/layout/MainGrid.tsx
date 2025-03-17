@@ -12,12 +12,14 @@ interface OverviewProps {
   isEditMode: boolean;
   widgets: WidgetConfig[];
   onUpdateWidgets: (newWidgets: WidgetConfig[]) => void;
+  studentId: string;
 }
 
 export function Overview({
   isEditMode,
   widgets,
   onUpdateWidgets,
+  studentId, // 추가됨
 }: OverviewProps) {
   const sections = ['a1','a2','a3','a4','b1','b2','b3','b4'];
 
@@ -28,14 +30,12 @@ export function Overview({
     widgets.forEach(w => {
       map[w.position.sectionId].push(w);
     });
-    // order 순서 정렬
     Object.keys(map).forEach(secId => {
       map[secId].sort((a, b) => a.order - b.order);
     });
     return map;
   }, [widgets, sections]);
 
-  // 드래그 종료 시점에 섹션 변경/순서 변경 반영
   const handleDragEnd = (result: DropResult) => {
     const { source, destination, draggableId } = result;
     if (!destination) return;
@@ -50,17 +50,15 @@ export function Overview({
     if (!movingWidget) return;
 
     const newWidgets = [...widgets];
-    // 기존 위치에서 제거
     const oldIndex = newWidgets.findIndex((w) => w.widgetId === draggableId);
     if (oldIndex !== -1) {
       newWidgets.splice(oldIndex, 1);
     }
-    // 새 섹션 / order
+
     movingWidget.position.sectionId = destination.droppableId;
     movingWidget.order = destination.index;
     newWidgets.push(movingWidget);
 
-    // 해당 섹션 내 order 재정렬
     const sameSection = newWidgets.filter(
       (w) => w.position.sectionId === movingWidget.position.sectionId
     );
@@ -79,7 +77,6 @@ export function Overview({
           const items = sectionMap[secId];
           return (
             <Grid item xs={12} sm={6} md={3} key={secId}>
-              {/* ❗ Droppable이 항상 존재 (조건부로 제거 안 함) */}
               <Droppable droppableId={secId} isDropDisabled={!isEditMode}>
                 {(provided, snapshot) => (
                   <div
@@ -96,8 +93,6 @@ export function Overview({
                     }}
                   >
                     {items.map((cfg, index) => (
-                      // ❗ Draggable도 항상 존재
-                      // 수정 모드가 아닐 때 isDragDisabled만 true로
                       <Draggable
                         key={cfg.widgetId}
                         draggableId={cfg.widgetId}
@@ -119,10 +114,10 @@ export function Overview({
                               ...dragProvided.draggableProps.style,
                             }}
                           >
-                            {/* 실제 위젯 렌더링 (profileCard, semesterGrade 등) */}
                             <StatCard
                               sectionId={cfg.widgetId}
                               isEditMode={isEditMode}
+                              studentId={studentId} 
                             />
                           </div>
                         )}
@@ -140,7 +135,6 @@ export function Overview({
   );
 }
 
-// ✅ Details 섹션 함수
 export function Details() {
   return (
     <>
