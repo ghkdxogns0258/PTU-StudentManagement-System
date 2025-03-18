@@ -9,6 +9,7 @@ import Dashboard from './pages/Dashboard';
 import Student from './pages/Student';
 import UserSetting from './pages/UserSetting';
 import Client from './pages/Client';
+import StudentDetail from './pages/StudentDetail';
 import OAuthCallback from './pages/OAuthCallback';
 
 const queryClient = new QueryClient();
@@ -25,6 +26,7 @@ createRoot(document.getElementById('root')!).render(
               <Route path="/student" element={<Student />} />
               <Route path="/usersetting" element={<UserSetting />} />
               <Route path="/client" element={<Client />} />
+              <Route path="/students/:studentId" element={<StudentDetail />} />
               <Route path="/auth/kakao/callback" element={<OAuthCallback />} />
             </Routes>
           </Router>

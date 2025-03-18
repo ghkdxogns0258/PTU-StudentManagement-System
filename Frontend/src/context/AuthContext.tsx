@@ -1,10 +1,10 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import axios from 'axios';
+import { kakaoLogin } from '../api/auth';
+import { UserInfo } from '../api/types/auth'; // 타입 가져오기
 
 interface AuthContextProps {
-  user: any;
-  setUser: React.Dispatch<React.SetStateAction<any>>; 
-  loginWithGoogle: (code: string) => Promise<void>;
+  user: UserInfo | null;
+  setUser: React.Dispatch<React.SetStateAction<UserInfo | null>>;
   loginWithKakao: (code: string) => Promise<void>;
   logout: () => void;
 }
@@ -12,54 +12,48 @@ interface AuthContextProps {
 const AuthContext = createContext<AuthContextProps | null>(null);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<UserInfo | null>(null);
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
-    const token = localStorage.getItem('token');
+    const jwt = localStorage.getItem('jwt');
 
-    if (storedUser && token) {
+    if (storedUser && jwt) {
       setUser(JSON.parse(storedUser));
     }
   }, []);
 
-  const loginWithGoogle = async (code: string) => {
+  // ✅ 카카오 로그인
+  const loginWithKakao = async (code: string): Promise<void> => {
     try {
-      const response = await axios.post('http://localhost:5000/auth/google', { code });
-      const { user, token } = response.data;
-      
-      setUser(user);
-      localStorage.setItem('user', JSON.stringify(user));
-      localStorage.setItem('token', token);
-    } catch (error) {
-      console.error('Google 로그인 실패:', error);
-    }
-  };
+      const { user, jwt, isNewUser } = await kakaoLogin(code);
 
-  const loginWithKakao = async (code: string) => {
-    try {
-      const response = await axios.post('http://localhost:5000/auth/kakao', { code });
-      const { user, token } = response.data;
-      
       setUser(user);
       localStorage.setItem('user', JSON.stringify(user));
-      localStorage.setItem('token', token);
+      localStorage.setItem('jwt', jwt);
+
+      // 추가적으로 isNewUser를 사용해서 분기 가능
+      console.log('isNewUser:', isNewUser);
     } catch (error) {
-      console.error('Kakao 로그인 실패:', error);
+      console.error('카카오 로그인 실패:', error);
     }
   };
 
   const logout = () => {
     setUser(null);
     localStorage.removeItem('user');
-    localStorage.removeItem('token');
+    localStorage.removeItem('jwt');
   };
 
   return (
-    <AuthContext.Provider value={{ user, setUser, loginWithGoogle, loginWithKakao, logout }}>
+    <AuthContext.Provider value={{ user, setUser, loginWithKakao, logout }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
-export const useAuth = () => useContext(AuthContext)!;
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) throw new Error('useAuth는 AuthProvider 안에서 사용해야 합니다');
+  return context;
+};

@@ -1,26 +1,27 @@
 import React from 'react';
 import TextField from '@mui/material/TextField';
+import { ProfessorSettings } from '../../api/types/userSettings';
 
 interface ProfessorFormProps {
-  formData: {
-    idNumber: string;
-    position: string;
-  };
+  formData: ProfessorSettings;  
   onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
 const ProfessorForm: React.FC<ProfessorFormProps> = ({ formData, onChange }) => {
   return (
     <>
+      {/* ✅ 교수 번호 입력 */}
       <TextField
-        name="idNumber"
+        name="professorId"
         label="교수 번호"
         variant="outlined"
         fullWidth
         required
-        value={formData.idNumber}
+        value={formData.professorId}
         onChange={onChange}
       />
+
+      {/* ✅ 직급 입력 */}
       <TextField
         name="position"
         label="직급"

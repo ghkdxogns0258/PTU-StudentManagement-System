@@ -1,20 +1,22 @@
 import * as React from 'react';
+import { useParams } from 'react-router-dom';
 import CssBaseline from '@mui/material/CssBaseline';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import AppNavbar from '../components/layout/AppNavbar';
 import Header from '../components/layout/Header';
 import SideMenu from '../components/navigation/SideMenu';
-import { Card, CardContent, Tabs, Tab } from '@mui/material';
-import ClientBasicInfo from '../components/forms/ClientBasicInfo';
-import ClientAcademicInfo from '../components/forms/ClientAcademicInfo';
-import ClientCounselingInfo from '../components/forms/ClientCounselingInfo';
-import ClientCareerInfo from '../components/forms/ClientCareerInfo';
+import { Card, CardContent, Tabs, Tab, Typography } from '@mui/material';
+import StudentBasicInfo from '../components/views/StudentBasicInfo';
+import StudentAcademicInfo from '../components/views/StudentAcademicInfo';
+import StudentCounselingInfo from '../components/views/StudentCounselingInfo';
+import StudentCareerInfo from '../components/views/StudentCareerInfo';
 import AppTheme from '../theme/AppTheme';
 import useStudentProfileCardData from '../hooks/useStudentProfileCardData';
 import StudentProfileCard from '../components/cards/StudentProfileCard';
 
-export default function Client(props: { disableCustomTheme?: boolean }) {
+export default function StudentDetail() {
+  const { studentId } = useParams<{ studentId: string }>();
   const [selectedTab, setSelectedTab] = React.useState('basic');
 
   const {
@@ -24,16 +26,24 @@ export default function Client(props: { disableCustomTheme?: boolean }) {
     isLoading,
   } = useStudentProfileCardData();
 
+  if (!studentId) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Typography variant="h6">잘못된 접근입니다. 학생 정보를 찾을 수 없습니다.</Typography>
+      </Box>
+    );
+  }
+
+  const name = studentSettings?.name || '';
+  const studentIdText = studentSettings?.studentId || '';
+  const avatarUrl = 'https://via.placeholder.com/100';
+
   const handleChange = (_event: React.SyntheticEvent, newValue: string) => {
     setSelectedTab(newValue);
   };
 
-  const name = studentSettings?.name || '';
-  const studentId = studentSettings?.studentId || '';
-  const avatarUrl = 'https://via.placeholder.com/100';
-
   return (
-    <AppTheme {...props}>
+    <AppTheme>
       <CssBaseline enableColorScheme />
       <Box sx={{ display: 'flex' }}>
         <SideMenu />
@@ -53,13 +63,13 @@ export default function Client(props: { disableCustomTheme?: boolean }) {
         >
           <Stack spacing={2} sx={{ alignItems: 'center', pb: 5, width: '100%', maxWidth: 900 }}>
             <Header />
-            
+
             <Card variant="outlined" sx={{ width: '100%', maxWidth: 600, p: 3, textAlign: 'center' }}>
               
-              {/* ✅ 프로필 카드 */}
+              {/* ✅ 프로필 영역 */}
               <StudentProfileCard
                 name={name}
-                studentId={studentId}
+                studentId={studentIdText}
                 universityName={universityName}
                 advisorName={advisorName}
                 avatarUrl={avatarUrl}
@@ -82,10 +92,10 @@ export default function Client(props: { disableCustomTheme?: boolean }) {
 
               {/* ✅ 상세 정보 */}
               <CardContent>
-                {selectedTab === 'basic' && <ClientBasicInfo />}
-                {selectedTab === 'academic' && <ClientAcademicInfo />}
-                {selectedTab === 'counseling' && <ClientCounselingInfo />}
-                {selectedTab === 'career' && <ClientCareerInfo />}
+                {selectedTab === 'basic' && <StudentBasicInfo studentId={studentId} />}
+                {selectedTab === 'academic' && <StudentAcademicInfo studentId={studentId} />}
+                {selectedTab === 'counseling' && <StudentCounselingInfo studentId={studentId} />}
+                {selectedTab === 'career' && <StudentCareerInfo studentId={studentId} />}
               </CardContent>
             </Card>
           </Stack>
