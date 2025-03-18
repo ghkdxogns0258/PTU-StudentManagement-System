@@ -1,5 +1,7 @@
 const express = require('express');
 const { Student, User, University } = require('../models');
+const authMiddleware = require('../middlewares/authMiddleware');
+const counselingController = require('../controllers/counselingController');
 
 const router = express.Router();
 
@@ -21,5 +23,7 @@ router.get('/students/:id', async (req, res) => {
         return res.status(500).json({ error: "서버 오류 발생" });
     }
 });
+router.get('/basic', authMiddleware.verifyToken, studentController.getStudentBasicInfo);
+router.post('/students/:id/counseling/schedule', authMiddleware.verifyToken, counselingController.createCounselingSchedule);
 
 module.exports = router;
