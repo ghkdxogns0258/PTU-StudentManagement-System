@@ -9,10 +9,14 @@ import Divider from '@mui/material/Divider';
 import CircularProgress from '@mui/material/CircularProgress';
 import { getProfileCardData, ProfileCardData } from '../../api/widgets/profileCard';
 
-export default function ProfileCard({ id }: { id: string }) {
+interface Props {
+  id: string;
+  isEditMode: boolean;
+}
+
+export default function ProfileCard({ id }: Props) {
   const [data, setData] = React.useState<ProfileCardData | null>(null);
   const [loading, setLoading] = React.useState(false);
-  const [error, setError] = React.useState<Error | null>(null);
 
   const defaultData: ProfileCardData = {
     photoUrl: "https://via.placeholder.com/80",
@@ -28,13 +32,11 @@ export default function ProfileCard({ id }: { id: string }) {
 
     const fetchData = async () => {
       setLoading(true);
-      setError(null);
-
       try {
         const res = await getProfileCardData(id);
         setData(res);
-      } catch (err) {
-        setError(err as Error);
+      } catch {
+        setData(null);
       } finally {
         setLoading(false);
       }
@@ -80,11 +82,7 @@ export default function ProfileCard({ id }: { id: string }) {
 
             <Stack spacing={1} width="100%">
               <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>희망 취업 분야</Typography>
-              <Stack spacing={1}>
-                <Typography variant="body2" color="text.secondary">
-                  {profile.desiredJobField || '(공백)'}
-                </Typography>
-              </Stack>
+              <Typography variant="body2" color="text.secondary">{profile.desiredJobField || '(공백)'}</Typography>
             </Stack>
           </Stack>
         </Stack>

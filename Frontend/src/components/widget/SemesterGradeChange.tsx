@@ -9,6 +9,11 @@ import { LineChart } from '@mui/x-charts/LineChart';
 import { useTheme } from '@mui/material/styles';
 import { getSemesterGradeChangeData, SemesterGradeChangeData } from '../../api/widgets/semesterGradeChange';
 
+interface Props {
+  id: string;
+  isEditMode: boolean;
+}
+
 function AreaGradient({ color, id }: { color: string; id: string }) {
   return (
     <defs>
@@ -20,8 +25,9 @@ function AreaGradient({ color, id }: { color: string; id: string }) {
   );
 }
 
-export default function SemesterGradeChange({ id }: { id: string }) {
+export default function SemesterGradeChange({ id }: Props) {
   const theme = useTheme();
+
   const [data, setData] = React.useState<SemesterGradeChangeData | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<Error | null>(null);

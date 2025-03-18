@@ -9,8 +9,14 @@ import { BarChart } from '@mui/x-charts/BarChart';
 import { useTheme } from '@mui/material/styles';
 import { getSemesterGradeData, SemesterGradeData } from '../../api/widgets/semesterGrade';
 
-export default function SemesterGrade({ id }: { id: string }) {
+interface Props {
+  id: string;
+  isEditMode: boolean;
+}
+
+export default function SemesterGrade({ id }: Props) {
   const theme = useTheme();
+
   const [data, setData] = React.useState<SemesterGradeData | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<Error | null>(null);
@@ -74,7 +80,7 @@ export default function SemesterGrade({ id }: { id: string }) {
 
         <BarChart
           borderRadius={8}
-          colors={[(theme.vars || theme).palette.primary.main]}
+          colors={[theme.palette.primary.main]}
           xAxis={[{ scaleType: 'band', categoryGapRatio: 0.5, data: semesterData.subjects }]}
           yAxis={[{ scaleType: 'linear', min: 0, max: 4.5 }]}
           series={[{

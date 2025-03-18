@@ -4,7 +4,7 @@ import GraduationRequirements from '../widget/GraduationRequirements';
 import SemesterGrade from '../widget/SemesterGrade';
 import SemesterGradeChange from '../widget/SemesterGradeChange';
 
-const widgetComponents: Record<string, React.FC<{ id: string }>> = {
+const widgetComponents: Record<string, React.FC<{ id: string; isEditMode: boolean }>> = {
   profileCard: ProfileCard,
   semesterGradeChange: SemesterGradeChange,
   semesterGrade: SemesterGrade,
@@ -30,7 +30,7 @@ export default function WidgetRenderer({ sectionId, isEditMode, studentId }: Wid
 
   return (
     <div style={{ cursor: isEditMode ? 'grab' : 'default' }}>
-      <WidgetComponent id={studentId} />
+      <WidgetComponent id={studentId} isEditMode={isEditMode} />
     </div>
   );
 }

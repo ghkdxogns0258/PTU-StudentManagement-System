@@ -9,10 +9,14 @@ import CircularProgress from '@mui/material/CircularProgress';
 import { PieChart } from '@mui/x-charts/PieChart';
 import { getGraduationStatusData, GraduationStatusData } from '../../api/widgets/graduationStatus';
 
-export default function GraduationRequirements({ id }: { id: string }) {
+interface Props {
+  id: string;
+  isEditMode: boolean;
+}
+
+export default function GraduationRequirements({ id }: Props) {
   const [data, setData] = React.useState<GraduationStatusData | null>(null);
   const [loading, setLoading] = React.useState(false);
-  const [error, setError] = React.useState<Error | null>(null);
 
   const defaultData: GraduationStatusData = {
     categories: [
@@ -29,13 +33,11 @@ export default function GraduationRequirements({ id }: { id: string }) {
 
     const fetchData = async () => {
       setLoading(true);
-      setError(null);
-
       try {
         const res = await getGraduationStatusData(id);
         setData(res);
-      } catch (err) {
-        setError(err as Error);
+      } catch {
+        setData(null);
       } finally {
         setLoading(false);
       }
