@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const swaggerJsdoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
-const path = require('path');
+const swaggerJsdoc = require('swagger-jsdoc'); // ✅ swaggerJsdoc 가져오기
+const path = require('path'); // ✅ path 모듈 추가
 
 // ✅ Swagger 옵션 설정
 const swaggerOptions = {
@@ -18,8 +18,9 @@ const swaggerOptions = {
     apis: [path.join(__dirname, "./apiDocs.js")], // ✅ API 문서화 대상 파일 지정
 };
 
-// ✅ Swagger 문서 생성
+// ✅ Swagger 문서 생성 (중복 선언 제거)
 const swaggerDocs = swaggerJsdoc(swaggerOptions);
+
 router.use('/', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
 module.exports = router;
