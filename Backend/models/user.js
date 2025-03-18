@@ -1,25 +1,33 @@
-const { sequelize, DataTypes } = require('../config/db'); // db.js에서 연결 가져오기
+const { DataTypes } = require('sequelize');
+const sequelize = require('../config/db'); // ✅ Sequelize 인스턴스 가져오기
 
 const User = sequelize.define('User', {
   id: {
     type: DataTypes.INTEGER,
-    primaryKey: true,
     autoIncrement: true,
+    primaryKey: true
   },
-  username: {
+  uniqueId: {
     type: DataTypes.STRING,
-    allowNull: false,
+    unique: true,
+    allowNull: false
   },
-  password: {
+  oauthId: {
     type: DataTypes.STRING,
-    allowNull: false,
+    unique: true,
+    allowNull: false
   },
-  role: {
+  userType: {
+    type: DataTypes.ENUM('student', 'professor'),
+    allowNull: false
+  },
+  name: {
     type: DataTypes.STRING,
-    allowNull: false,
-  },
+    allowNull: false
+  }
 }, {
-  timestamps: true, // createdAt, updatedAt 자동 추가
+  timestamps: true // ✅ createdAt, updatedAt 자동 추가
 });
 
+// ✅ User 모델 내보내기
 module.exports = User;
