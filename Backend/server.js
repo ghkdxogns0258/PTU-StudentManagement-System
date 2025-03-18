@@ -6,5 +6,10 @@ const server = app.listen(PORT, () => {
   console.log(`📄 API Docs available at http://localhost:${PORT}/api-docs`);
 });
 
+// ✅ 서버 종료 함수 추가
+function closeServer() {
+  return new Promise((resolve) => server.close(resolve));
+}
+
 // ✅ Jest 테스트 실행 후 서버 종료 가능하도록 `server` 내보내기
 module.exports = server;
