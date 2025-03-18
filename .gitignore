@@ -3,7 +3,7 @@ node_modules/
 npm-debug.log*
 
 # 환경 변수 파일
-# .env (.gitignore 파일에서 .env 항목 제거, 이후 포함시키기기)
+# .env (.gitignore 파일에서 .env 항목 제거, 이후 포함시키기)
 # .env.local
 # .env.*.local
 
