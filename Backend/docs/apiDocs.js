@@ -278,6 +278,34 @@ module.exports = router;
  */
 /**
  * @openapi
+ * /users/settings:
+ *   get:
+ *     summary: 유저 추가 정보 조회 (역할 기반 반환)
+ *     tags:
+ *       - User Settings
+ *     description: 저장된 사용자 추가 정보를 조회합니다. 사용자 역할에 따라 반환되는 데이터가 다릅니다.
+ *     responses:
+ *       200:
+ *         description: 사용자 세팅이 성공적으로 반환되었습니다.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               oneOf:
+ *                 - $ref: '#/components/schemas/ProfessorSettings'
+ *                 - $ref: '#/components/schemas/StudentSettings'
+ *       404:
+ *         description: 사용자 세팅 정보를 찾을 수 없습니다.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: User settings not found
+ */
+/**
+ * @openapi
  * /client-data/basic:
  *   get:
  *     summary: 기본 정보 조회

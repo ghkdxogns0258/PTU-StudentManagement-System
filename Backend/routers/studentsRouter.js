@@ -1,4 +1,4 @@
-const express = require('express');
+/*const express = require('express');
 const { Student, User, University } = require('../models');
 
 const router = express.Router();
@@ -23,3 +23,5 @@ router.get('/students/:id', async (req, res) => {
 });
 
 module.exports = router;
+
+이전 작업내용 이므로 주석처리*/
